@@ -1,3 +1,12 @@
+///////////////////////////
+//
+// WIP STEP 2
+//
+// the account we use here is already prefunded in the devnet
+//
+///////////////////////////
+
+
 import fs from "fs";
 import readline from "readline";
 
@@ -9,77 +18,22 @@ import {
   ec,
   json,
   stark,
-  Provider,
+  SequencerProvider,
   number
 } from "starknet";
 
 const provider = process.env.STARKNET_PROVIDER_BASE_URL === undefined ?
   defaultProvider :
-  new Provider({ baseUrl: process.env.STARKNET_PROVIDER_BASE_URL });
+  new SequencerProvider({ baseUrl: process.env.STARKNET_PROVIDER_BASE_URL });
 
-console.log("Reading OpenZeppelin Account Contract...");
-const compiledOZAccount = json.parse(
-  fs.readFileSync("./OZAccount.json").toString("ascii")
-);
-
-// Since there are no Externally Owned Accounts (EOA) in StarkNet,
-// all Accounts in StarkNet are contracts.
-
-// Unlike in Ethereum where a account is created with a public and private key pair,
-// StarkNet Accounts are the only way to sign transactions and messages, and verify signatures.
-// Therefore a Account - Contract interface is needed.
-
-// Generate public and private key pair.
-const privateKey = stark.randomAddress();
-
-const starkKeyPair = ec.genKeyPair(privateKey);
-const starkKeyPub = ec.getStarkKey(starkKeyPair);
-
-// // Deploy the Account contract and wait for it to be verified on StarkNet.
-console.log("Deployment Tx - Account Contract to StarkNet...");
-const accountResponse = await provider.deployContract({
-  contract: compiledOZAccount,
-  constructorCalldata: [starkKeyPub],
-  addressSalt: starkKeyPub,
-});
-
-// You can also check this address on https://goerli.voyager.online/
-console.log("Account address ", accountResponse.contract_address);
-
-// Wait for the deployment transaction to be accepted on StarkNet
-console.log(
-  "Waiting for Tx to be Accepted on Starknet - OpenZeppelin Account Deployment..."
-);
-await provider.waitForTransaction(accountResponse.transaction_hash);
-
-function askQuestion(query) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-  
-    return new Promise(resolve => rl.question(query, ans => {
-        rl.close();
-        resolve(ans);
-    }))
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-// IMPORTANT: you need to fund your newly created account before you use it. 
-// You can do so by using a faucet:
-// https://faucet.goerli.starknet.io/
-////////////////////////////////////////////////////////////////////////////////
-
-const ans = await askQuestion("Did you add funds to your Account? Hit enter if yes");
-
-////////////////
-//// PART 2 ////
-////////////////
+// devnet private key from Account #0 if generated with --seed 0
+const starkKeyPair = ec.getKeyPair("0xe3e70682c2094cac629f6fbed82c07cd");
+const accountAddress = "0x7e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a";
 
 // Use your new account address
 const account = new Account(
     provider,
-    accountResponse.contract_address,
+    accountAddress,
     starkKeyPair
   );
 
