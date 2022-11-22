@@ -6,11 +6,31 @@ Run `npm install` in this directory.
 
 In your own code please run `npm install starknet@next` for the latest version of starknet.js.
 
-The Account contract used in this workshop is made by [OpenZeppelin](https://github.com/OpenZeppelin/cairo-contracts), contract version 0.2.1.
+The Account contract used in this workshop is made by [OpenZeppelin](https://github.com/OpenZeppelin/cairo-contracts): **contract version 0.5.0**
+
+The compiled Account.json was taken from the devnet [repo](https://github.com/Shard-Labs/starknet-devnet/tree/master/starknet_devnet/accounts_artifacts/OpenZeppelin/0.5.0/Account.cairo).
 
 ## Start the demo:
 
-`node index.js`
+### Deploy Account
+
+`node deploy_account.js`
+
+**NOTE:** if you start like this, the workshop will run on the goerli testnet.
+
+To start with the local devnet:
+
+1. Install the devnet following the official [documentation](https://shard-labs.github.io/starknet-devnet/docs/intro) 
+2. Go to the devnet repo and start:
+`starknet-devnet --seed 0` -> `--seed 0` ensures the creation of same accounts each time
+3. Go to the workshop repo and start like this:
+`STARKNET_PROVIDER_BASE_URL=http://127.0.0.1:5050/ node deploy_account.js`
+
+### Deploy ERC20
+
+**NOTE:** tested on devnet only
+
+`STARKNET_PROVIDER_BASE_URL=http://127.0.0.1:5050/ node deploy_erc20.js`
 
 ## Videos:
 This workshop, along with general info about starknet.js, is shown in videos below:
