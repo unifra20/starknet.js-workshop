@@ -8,14 +8,16 @@ In your own code please run `npm install starknet@next` for the latest version o
 
 The Account contract used in this workshop is made by [OpenZeppelin](https://github.com/OpenZeppelin/cairo-contracts): **contract version 0.5.1**
 
+
+**Argent accounts example**:
+For an example on how to do this with Argent's account, take a look at this [tutorial](https://github.com/0xs34n/starknet.js-account).
+
 The compilation of Account.json was done by using Nile and these [instructions](https://github.com/OpenZeppelin/cairo-contracts#first-time).
 
 Class hash was obtained with the [Starkli](https://github.com/xJonathanLEI/starkli) tool.
 
 
 ## THEORY
-
----
 
 High level explanations from StarkWare:
 
@@ -24,8 +26,6 @@ https://starkware.notion.site/Deploy-a-contract-and-an-account-on-StarkNet-ed2fd
 ## Start the demo:
 
 **NOTE**: this demo was done and tested with the local devnet, which we recommend to do also.
-
----
 
 ### 1. Precalculate Address + Send Funds
 
@@ -61,8 +61,6 @@ This workshop, along with general info about starknet.js, is shown in videos bel
 - https://youtu.be/6jGlDBRvckU?t=2167
 
 **Note:** these videos are outdated with regards to code, but still are nice introduction to Starknet.js
-
----
 
 ## Questions?
 
