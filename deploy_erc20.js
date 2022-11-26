@@ -1,14 +1,15 @@
 ///////////////////////////
 //
-// WIP STEP 2
+// WIP STEP 5
 //
 // the account we use here is already prefunded in the devnet
+//
+// not yet modified with new flow
 //
 ///////////////////////////
 
 
 import fs from "fs";
-import readline from "readline";
 
 // Install the latest version of starknet with npm install starknet@next and import starknet
 import {
@@ -17,7 +18,6 @@ import {
   defaultProvider,
   ec,
   json,
-  stark,
   SequencerProvider,
   number
 } from "starknet";
