@@ -1,10 +1,10 @@
 ///////////////////////////
 //
-// WIP STEP 5
+// ERC20 DEPLOYMENT AND INTERACTION
 //
-// the account we use here is already prefunded in the devnet
+// The account we use here is already prefunded in the devnet.
 //
-// not yet modified with new flow
+// We shall deploy and call the OpenZeppelin ERC20 contract.
 //
 ///////////////////////////
 
@@ -14,102 +14,179 @@ import fs from "fs";
 // Install the latest version of starknet with npm install starknet@next and import starknet
 import {
   Account,
-  Contract,
   defaultProvider,
   ec,
   json,
   SequencerProvider,
-  number
+  Contract,
+  stark,
+  number,
+  shortString
 } from "starknet";
+
+// SETUP
 
 const provider = process.env.STARKNET_PROVIDER_BASE_URL === undefined ?
   defaultProvider :
   new SequencerProvider({ baseUrl: process.env.STARKNET_PROVIDER_BASE_URL });
-
-// devnet private key from Account #0 if generated with --seed 0
-const starkKeyPair = ec.getKeyPair("0xe3e70682c2094cac629f6fbed82c07cd");
-const accountAddress = "0x7e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a";
-
-// Use your new account address
-const account = new Account(
-    provider,
-    accountAddress,
-    starkKeyPair
-  );
 
 console.log("Reading ERC20 Contract...");
 const compiledErc20 = json.parse(
   fs.readFileSync("./ERC20.json").toString("ascii")
 );
 
-// Deploy an ERC20 contract and wait for it to be verified on StarkNet.
-console.log("Deployment Tx - ERC20 Contract to StarkNet...");
-const erc20Response = await provider.deployContract({
+// Note: cleanHex will be redundant with nevwer starknet.js version
+const cleanHex = (hex) => hex.toLowerCase().replace(/^(0x)0+/, '$1');
+
+// devnet private key from Account #0 if generated with --seed 0
+const starkKeyPair = ec.getKeyPair("0xe3e70682c2094cac629f6fbed82c07cd");
+const accountAddress = "0x7e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a";
+
+const recieverAddress = '0x69b49c2cc8b16e80e86bfc5b0614a59aa8c9b601569c7b80dde04d3f3151b79';
+
+// Starknet.js currently doesn't have the functionality to calculate the class hash
+const erc20ClassHash = '0x03f794a28472089a1a99b7969fc51cd5fbe22dd09e3f38d2bd6fa109cb3f4ecf';
+
+const account = new Account(
+    provider,
+    accountAddress,
+    starkKeyPair
+  );
+
+// 1. DECLARE CONTRACT
+
+const erc20DeclareResponse = await account.declare({
+  classHash: erc20ClassHash,
   contract: compiledErc20,
 });
 
-// Wait for the deployment transaction to be accepted on StarkNet
+await provider.waitForTransaction(erc20DeclareResponse.transaction_hash);
+
+console.log("erc20 contract declared");
+console.log(erc20DeclareResponse);
+
+// 2. DEPLOY CONTRACT
+
+// Deploy an ERC20 contract and wait for it to be verified on StarkNet.
+console.log("Deployment Tx - ERC20 Contract to StarkNet...");
+
+const salt = '900080545022'; // use some random salt
+
+const erc20Response = await account.deploy({
+  classHash: erc20ClassHash,
+  constructorCalldata: stark.compileCalldata({
+    name: shortString.encodeShortString('TestToken'),
+    symbol: shortString.encodeShortString('ERC20'),
+    decimals: 18,
+    initial_supply: ['1000'],
+    recipient: account.address,
+  }),
+  salt,
+});
+
+
 console.log("Waiting for Tx to be Accepted on Starknet - ERC20 Deployment...");
 await provider.waitForTransaction(erc20Response.transaction_hash);
 
+const txReceipt = await provider.getTransactionReceipt(erc20Response.transaction_hash);
+
+
+///////////////////////////////
+// Contract interaction
+///////////////////////////////
+
 // Get the erc20 contract address
-const erc20Address = erc20Response.contract_address;
-console.log("ERC20 Address: ", erc20Address);
+const erc20Event = parseUDCEvent(txReceipt);
+console.log("ERC20 Address: ", erc20Event.address);
+
+const erc20Address = erc20Event.address
 
 // Create a new erc20 contract object
 const erc20 = new Contract(compiledErc20.abi, erc20Address, provider);
 
 erc20.connect(account);
 
-// Mint 1000 tokens to account address
-console.log(`Invoke Tx - Minting 1000 tokens to ${account.address}...`);
-const { transaction_hash: mintTxHash } = await erc20.mint(
-  account.address,
-  "1000",
-  { 
-    // transaction can be rejected if maxFee is lower than actual
-    // Error: REJECTED: FEE_TRANSFER_FAILURE
-    // Actual fee exceeded max fee.
-    maxFee: "999999995330000" 
-  }
-);
+// OPTION 1 - call as contract object
 
-// Wait for the invoke transaction to be accepted on StarkNet
-console.log(`Waiting for Tx to be Accepted on Starknet - Minting...`);
-await provider.waitForTransaction(mintTxHash);
-
-// Check balance - should be 1000
-console.log(`Calling StarkNet for account balance...`);
-const balanceBeforeTransfer = await erc20.balance_of(account.address);
-
-console.log(
-  `account Address ${account.address} has a balance of:`,
-  number.toBN(balanceBeforeTransfer.res, 16).toString()
-);
-
-// Execute tx transfer of 10 tokens
-console.log(`Invoke Tx - Transfer 10 tokens back to erc20 contract...`);
-const { code, transaction_hash: transferTxHash } = await account.execute(
-  {
-    contractAddress: erc20Address,
-    entrypoint: "transfer",
-    calldata: [erc20Address, "10"],
-  },
-  undefined,
-  { 
-    maxFee: "999999995330000" 
-  }
+console.log(`Invoke Tx - Sending 10 tokens to ${recieverAddress}...`);
+const { transaction_hash: mintTxHash } = await erc20.transfer(
+  recieverAddress,
+  ['0', '10'], // send 10 tokens as Uint256
 );
 
 // Wait for the invoke transaction to be accepted on StarkNet
 console.log(`Waiting for Tx to be Accepted on Starknet - Transfer...`);
-await provider.waitForTransaction(transferTxHash);
+await provider.waitForTransaction(mintTxHash);
 
-// Check balance after transfer - should be 990
 console.log(`Calling StarkNet for account balance...`);
-const balanceAfterTransfer = await erc20.balance_of(account.address);
+const balanceBeforeTransfer = await erc20.balanceOf(account.address);
 
 console.log(
   `account Address ${account.address} has a balance of:`,
-  number.toBN(balanceAfterTransfer.res, 16).toString()
+  number.toBN(balanceBeforeTransfer[0].high).toString()
 );
+
+// OPTION 2 - call contract from Account
+
+//Execute tx transfer of 10 tokens
+console.log(`Invoke Tx - Transfer 10 tokens to ${recieverAddress}...`);
+const executeHash = await account.execute(
+  {
+    contractAddress: erc20Address,
+    entrypoint: 'transfer',
+    calldata: stark.compileCalldata({
+      recipient: recieverAddress,
+      amount: ['10']
+    })
+  }
+);
+
+console.log(`Waiting for Tx to be Accepted on Starknet - Transfer...`);
+await provider.waitForTransaction(executeHash.transaction_hash);
+
+
+// Check balances
+
+// Sender
+console.log(`Calling StarkNet for Sender account balance...`);
+const balanceAfterTransfer = await erc20.balanceOf(account.address);
+
+console.log(
+  `account Sender ${account.address} has a balance of:`,
+  number.toBN(balanceAfterTransfer[0].high).toString()
+);
+
+// Reciever
+console.log(`Calling StarkNet for Reciever account balance...`);
+const recieverAfterTransfer = await erc20.balanceOf(recieverAddress);
+
+console.log(
+  `account Reciever ${recieverAddress} has a balance of:`,
+  number.toBN(recieverAfterTransfer[0].high).toString()
+);
+
+
+// NOTE: parseUDCEvent will be redundant with nevwer starknet.js version
+
+function parseUDCEvent(txReceipt) {
+  if (!txReceipt.events) {
+    throw new Error('UDC emited event is empty');
+  }
+  const event = txReceipt.events.find(
+    (it) => cleanHex(it.from_address) === cleanHex('0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf') // UDC address
+  ) || {
+    data: [],
+  };
+  return {
+    transaction_hash: txReceipt.transaction_hash,
+    contract_address: event.data[0],
+    address: event.data[0],
+    deployer: event.data[1],
+    unique: event.data[2],
+    classHash: event.data[3],
+    calldata_len: event.data[4],
+    calldata: event.data.slice(5, 5 + parseInt(event.data[4], 16)),
+    salt: event.data[event.data.length - 1],
+  };
+}
+
