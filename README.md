@@ -27,6 +27,10 @@ https://starkware.notion.site/Deploy-a-contract-and-an-account-on-StarkNet-ed2fd
 
 **NOTE**: this demo was done and tested with the local devnet, which we recommend to do also.
 
+1. Install the devnet following the official [documentation](https://shard-labs.github.io/starknet-devnet/docs/intro) 
+2. Go to the devnet repo and start:
+`starknet-devnet --seed 0` -> `--seed 0` ensures the creation of same predeployed accounts each time
+
 ### 1. Precalculate Address + Send Funds
 
 `node precalculate_address.js`
@@ -38,14 +42,10 @@ https://starkware.notion.site/Deploy-a-contract-and-an-account-on-StarkNet-ed2fd
 **NOTE:** if you start like this, the workshop will run on the goerli testnet.
 
 To start with the **local devnet**:
-
-1. Install the devnet following the official [documentation](https://shard-labs.github.io/starknet-devnet/docs/intro) 
-2. Go to the devnet repo and start:
-`starknet-devnet --seed 0` -> `--seed 0` ensures the creation of same predeployed accounts each time
-3. Go to the workshop repo and start like this:
+Go to the workshop repo and start like this:
 `STARKNET_PROVIDER_BASE_URL=http://127.0.0.1:5050/ node deploy_account.js`
 
-### 3. Deploy ERC20
+### 3. Deploy ERC20 and interact
 
 **NOTE:** tested on devnet only
 
