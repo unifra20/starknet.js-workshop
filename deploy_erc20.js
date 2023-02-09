@@ -8,27 +8,27 @@
 //
 ///////////////////////////
 
-
 import fs from "fs";
 
 // Install the latest version of starknet with npm install starknet@next and import starknet
 import {
   Account,
+  Contract,
+  RpcProvider,
   defaultProvider,
   ec,
   json,
-  SequencerProvider,
-  Contract,
-  stark,
   number,
-  shortString
+  shortString,
+  stark,
 } from "starknet";
 
 // SETUP
 
-const provider = process.env.STARKNET_PROVIDER_BASE_URL === undefined ?
-  defaultProvider :
-  new SequencerProvider({ baseUrl: process.env.STARKNET_PROVIDER_BASE_URL });
+const provider =
+  process.env.STARKNET_NODE_PROVIDER_URL === undefined
+    ? defaultProvider
+    : new RpcProvider({ nodeUrl: process.env.STARKNET_NODE_PROVIDER_URL });
 
 console.log("Reading ERC20 Contract...");
 const compiledErc20 = json.parse(
@@ -36,22 +36,23 @@ const compiledErc20 = json.parse(
 );
 
 // Note: cleanHex will be redundant with nevwer starknet.js version
-const cleanHex = (hex) => hex.toLowerCase().replace(/^(0x)0+/, '$1');
+const cleanHex = (hex) => hex.toLowerCase().replace(/^(0x)0+/, "$1");
 
 // devnet private key from Account #0 if generated with --seed 0
-const starkKeyPair = ec.getKeyPair("0xe3e70682c2094cac629f6fbed82c07cd");
-const accountAddress = "0x7e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a";
+const starkKeyPair = ec.getKeyPair(
+  "0x02b57c4a7fd9cf7d2c3321a753f2263e9cbf5b017227982a936638f5165aa82c"
+);
+const accountAddress =
+  "0x23234b08ba0b9e9be710b8a0b69aa46f570d1b7452fce14003c595fc4cfbdb7";
 
-const recieverAddress = '0x69b49c2cc8b16e80e86bfc5b0614a59aa8c9b601569c7b80dde04d3f3151b79';
+const recieverAddress =
+  "0x69b49c2cc8b16e80e86bfc5b0614a59aa8c9b601569c7b80dde04d3f3151b79";
 
 // Starknet.js currently doesn't have the functionality to calculate the class hash
-const erc20ClassHash = '0x03f794a28472089a1a99b7969fc51cd5fbe22dd09e3f38d2bd6fa109cb3f4ecf';
+const erc20ClassHash =
+  "0x03f794a28472089a1a99b7969fc51cd5fbe22dd09e3f38d2bd6fa109cb3f4ecf";
 
-const account = new Account(
-    provider,
-    accountAddress,
-    starkKeyPair
-  );
+const account = new Account(provider, accountAddress, starkKeyPair);
 
 // 1. DECLARE CONTRACT
 
@@ -70,26 +71,26 @@ console.log(erc20DeclareResponse);
 // Deploy an ERC20 contract and wait for it to be verified on StarkNet.
 console.log("Deployment Tx - ERC20 Contract to StarkNet...");
 
-const salt = '900080545022'; // use some random salt
+const salt = "900080545022"; // use some random salt
 
 const erc20Response = await account.deploy({
   classHash: erc20ClassHash,
   constructorCalldata: stark.compileCalldata({
-    name: shortString.encodeShortString('TestToken'),
-    symbol: shortString.encodeShortString('ERC20'),
+    name: shortString.encodeShortString("TestToken"),
+    symbol: shortString.encodeShortString("ERC20"),
     decimals: 18,
-    initial_supply: ['1000'],
+    initial_supply: ["1000"],
     recipient: account.address,
   }),
   salt,
 });
 
-
 console.log("Waiting for Tx to be Accepted on Starknet - ERC20 Deployment...");
 await provider.waitForTransaction(erc20Response.transaction_hash);
 
-const txReceipt = await provider.getTransactionReceipt(erc20Response.transaction_hash);
-
+const txReceipt = await provider.getTransactionReceipt(
+  erc20Response.transaction_hash
+);
 
 ///////////////////////////////
 // Contract interaction
@@ -99,7 +100,7 @@ const txReceipt = await provider.getTransactionReceipt(erc20Response.transaction
 const erc20Event = parseUDCEvent(txReceipt);
 console.log("ERC20 Address: ", erc20Event.address);
 
-const erc20Address = erc20Event.address
+const erc20Address = erc20Event.address;
 
 // Create a new erc20 contract object
 const erc20 = new Contract(compiledErc20.abi, erc20Address, provider);
@@ -111,7 +112,7 @@ erc20.connect(account);
 console.log(`Invoke Tx - Sending 10 tokens to ${recieverAddress}...`);
 const { transaction_hash: mintTxHash } = await erc20.transfer(
   recieverAddress,
-  ['0', '10'], // send 10 tokens as Uint256
+  ["0", "10"] // send 10 tokens as Uint256
 );
 
 // Wait for the invoke transaction to be accepted on StarkNet
@@ -130,20 +131,17 @@ console.log(
 
 //Execute tx transfer of 10 tokens
 console.log(`Invoke Tx - Transfer 10 tokens to ${recieverAddress}...`);
-const executeHash = await account.execute(
-  {
-    contractAddress: erc20Address,
-    entrypoint: 'transfer',
-    calldata: stark.compileCalldata({
-      recipient: recieverAddress,
-      amount: ['10']
-    })
-  }
-);
+const executeHash = await account.execute({
+  contractAddress: erc20Address,
+  entrypoint: "transfer",
+  calldata: stark.compileCalldata({
+    recipient: recieverAddress,
+    amount: ["10"],
+  }),
+});
 
 console.log(`Waiting for Tx to be Accepted on Starknet - Transfer...`);
 await provider.waitForTransaction(executeHash.transaction_hash);
-
 
 // Check balances
 
@@ -165,15 +163,18 @@ console.log(
   number.toBN(recieverAfterTransfer[0].high).toString()
 );
 
-
 // NOTE: parseUDCEvent will be redundant with nevwer starknet.js version
 
 function parseUDCEvent(txReceipt) {
   if (!txReceipt.events) {
-    throw new Error('UDC emited event is empty');
+    throw new Error("UDC emited event is empty");
   }
   const event = txReceipt.events.find(
-    (it) => cleanHex(it.from_address) === cleanHex('0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf') // UDC address
+    (it) =>
+      cleanHex(it.from_address) ===
+      cleanHex(
+        "0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf"
+      ) // UDC address
   ) || {
     data: [],
   };
@@ -189,4 +190,3 @@ function parseUDCEvent(txReceipt) {
     salt: event.data[event.data.length - 1],
   };
 }
-
